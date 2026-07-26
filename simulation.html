@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulation — WarehouseAI Robot Fleet</title>
+  <meta name="description" content="Live warehouse robot simulation with real-time analytics, scenario presets, and robot inspector." />
+  <link rel="stylesheet" href="css/simulation.css" />
+</head>
+<body>
+
+<!-- ── Top Bar ────────────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <a class="topbar-logo" href="index.html">
+    <div class="icon-btn logo-icon">🤖</div>
+    Warehouse<span>AI</span>
+  </a>
+
+  <div class="topbar-center">
+    <span id="sim-status" class="sim-status ready">■ READY</span>
+    <span class="topbar-ticks">Tick: <b id="monitor-ticks">0</b></span>
+  </div>
+
+  <div class="topbar-right">
+    <nav class="topbar-nav">
+      <a href="index.html">Home</a>
+      <a href="report.html">Report</a>
+    </nav>
+    <button class="icon-btn" id="theme-toggle" title="Toggle theme">☀️</button>
+  </div>
+</div>
+
+<!-- ── Main Layout ────────────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- ── Canvas Pane ── -->
+  <div class="canvas-pane">
+    <!-- Toolbar -->
+    <div class="canvas-toolbar">
+      <!-- Main controls -->
+      <button class="ctrl-btn" id="btn-setup">⚙ Setup</button>
+      <button class="ctrl-btn" id="btn-go">▶ Go</button>
+      <button class="ctrl-btn" id="btn-pause">⏸ Pause</button>
+      <button class="ctrl-btn" id="btn-step">⏭ Step</button>
+      <button class="ctrl-btn danger" id="btn-reset">↺ Reset</button>
+
+      <div class="sep"></div>
+
+      <!-- Speed -->
+      <div class="speed-group">
+        <button class="speed-btn" data-speed="0.5">0.5×</button>
+        <button class="speed-btn active" data-speed="1">1×</button>
+        <button class="speed-btn" data-speed="2">2×</button>
+        <button class="speed-btn" data-speed="5">5×</button>
+        <button class="speed-btn" data-speed="10">10×</button>
+      </div>
+
+      <div class="sep"></div>
+
+      <!-- Scenario quick buttons -->
+      <button class="ctrl-btn scenario-btn" id="scenario-1" style="font-size:0.78rem;">S1: 5 robots</button>
+      <button class="ctrl-btn scenario-btn" id="scenario-2" style="font-size:0.78rem;">S2: 15 robots</button>
+      <button class="ctrl-btn scenario-btn" id="scenario-3" style="font-size:0.78rem;">S3: 30 robots</button>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas-container">
+      <canvas id="warehouse-canvas"></canvas>
+
+      <!-- State overlay pills -->
+      <div class="canvas-overlay">
+        <div class="overlay-pill purple">🔵 Fetch: <span id="monitor-fetching">0</span></div>
+        <div class="overlay-pill red">🔴 Deliver: <span id="monitor-delivering">0</span></div>
+        <div class="overlay-pill orange">🟠 Charge: <span id="monitor-charging">0</span></div>
+        <div class="overlay-pill teal">✅ Items: <span id="monitor-delivered">0</span></div>
+      </div>
+
+      <!-- Keyboard hints -->
+      <div class="kb-hint">
+        SPACE play/pause · R reset · S step · H heatmap · T trails · 1/2/3 scenarios
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Sidebar ── -->
+  <div class="sidebar">
+    <div class="sidebar-scroll">
+
+      <!-- Monitors -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">📊 Live Metrics</span>
+          <span class="panel-chevron open">▾</span>
+        </div>
+        <div class="panel-body">
+          <div class="monitors-grid">
+            <div class="monitor-card purple">
+              <div class="monitor-val" id="monitor-delivered">0</div>
+              <div class="monitor-label">Items Delivered</div>
+            </div>
+            <div class="monitor-card teal">
+              <div class="monitor-val" id="monitor-battery">—</div>
+              <div class="monitor-label">Avg Battery</div>
+              <div class="battery-bar-track"><div class="battery-bar-fill" id="avg-battery-bar" style="width:100%;background:#00c851;"></div></div>
+            </div>
+            <div class="monitor-card red">
+              <div class="monitor-val" id="monitor-collisions">0</div>
+              <div class="monitor-label">Collisions Avoided</div>
+            </div>
+            <div class="monitor-card orange">
+              <div class="monitor-val" id="monitor-charging">0</div>
+              <div class="monitor-label">Robots Charging</div>
+            </div>
+          </div>
+
+          <!-- Secondary stats -->
+          <div class="stats-row" style="margin-top:8px;">
+            <div class="stat-mini">
+              <div class="sv" id="monitor-ticks2" style="font-size:0.9rem;">0</div>
+              <div class="sl">Ticks</div>
+            </div>
+            <div class="stat-mini">
+              <div class="sv" style="font-size:0.9rem;color:var(--accent-light);" id="monitor-efficiency">0%</div>
+              <div class="sl">Efficiency</div>
+            </div>
+            <div class="stat-mini">
+              <div class="sv" style="font-size:0.9rem;color:var(--teal);" id="monitor-fetching2">0</div>
+              <div class="sl">Fetching</div>
+            </div>
+            <div class="stat-mini">
+              <div class="sv" style="font-size:0.9rem;color:var(--red);" id="monitor-delivering2">0</div>
+              <div class="sl">Delivering</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Scenarios -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">🎬 Scenarios</span>
+          <span class="panel-chevron open">▾</span>
+        </div>
+        <div class="panel-body">
+          <div class="scenario-grid">
+            <button class="scenario-btn" id="scenario-1">
+              <span class="s-num">S1</span>5 robots<br/>5 obstacles
+            </button>
+            <button class="scenario-btn" id="scenario-2">
+              <span class="s-num">S2</span>15 robots<br/>15 obstacles
+            </button>
+            <button class="scenario-btn" id="scenario-3">
+              <span class="s-num">S3</span>30 robots<br/>20 obstacles
+            </button>
+          </div>
+          <p style="font-size:0.72rem;color:var(--text-muted);margin-top:8px;line-height:1.5;">
+            Matches assessment brief scenarios. Run each for 500 ticks and compare on the Report page.
+          </p>
+        </div>
+      </div>
+
+      <!-- Sliders -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">⚙ Parameters</span>
+          <span class="panel-chevron open">▾</span>
+        </div>
+        <div class="panel-body">
+          <div class="slider-row">
+            <div class="slider-label"><span>Robots</span><span class="slider-val" id="num-robots-val">10</span></div>
+            <input type="range" id="num-robots" min="1" max="50" step="1" value="10" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Speed</span><span class="slider-val" id="robot-speed-val">1.0</span></div>
+            <input type="range" id="robot-speed" min="0.5" max="3" step="0.1" value="1" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Battery Capacity</span><span class="slider-val" id="battery-capacity-val">100</span></div>
+            <input type="range" id="battery-capacity" min="50" max="200" step="10" value="100" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Low Battery Threshold</span><span class="slider-val" id="low-battery-threshold-val">20</span></div>
+            <input type="range" id="low-battery-threshold" min="5" max="50" step="1" value="20" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Obstacles</span><span class="slider-val" id="num-obstacles-val">10</span></div>
+            <input type="range" id="num-obstacles" min="0" max="40" step="1" value="10" />
+          </div>
+          <div class="slider-row">
+            <div class="slider-label"><span>Restock Rate (ticks)</span><span class="slider-val" id="restock-rate-val">30</span></div>
+            <input type="range" id="restock-rate" min="5" max="100" step="5" value="30" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Visual Toggles -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">🎨 Visuals</span>
+          <span class="panel-chevron open">▾</span>
+        </div>
+        <div class="panel-body">
+          <div style="display:flex;flex-direction:column;gap:10px;">
+            <div class="toggle-row">
+              <span>🔥 Heatmap</span>
+              <label class="toggle-switch"><input type="checkbox" id="toggle-heatmap"><div class="toggle-track"></div></label>
+            </div>
+            <div class="toggle-row">
+              <span>〰 Trails</span>
+              <label class="toggle-switch"><input type="checkbox" id="toggle-trails" checked><div class="toggle-track"></div></label>
+            </div>
+            <div class="toggle-row">
+              <span>🔢 Labels</span>
+              <label class="toggle-switch"><input type="checkbox" id="toggle-labels" checked><div class="toggle-track"></div></label>
+            </div>
+            <div class="toggle-row">
+              <span>⬛ Grid lines</span>
+              <label class="toggle-switch"><input type="checkbox" id="toggle-grid" checked><div class="toggle-track"></div></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Charts -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">📈 Charts</span>
+          <span class="panel-chevron open">▾</span>
+        </div>
+        <div class="panel-body">
+          <div class="chart-tabs">
+            <button class="chart-tab active" onclick="switchChart('throughput', this)">Throughput</button>
+            <button class="chart-tab" onclick="switchChart('battery', this)">Battery</button>
+            <button class="chart-tab" onclick="switchChart('donut', this)">State</button>
+          </div>
+          <div class="chart-panel active" id="chart-pane-throughput"><canvas id="throughput-chart"></canvas></div>
+          <div class="chart-panel" id="chart-pane-battery"><canvas id="battery-chart"></canvas></div>
+          <div class="chart-panel" id="chart-pane-donut"><canvas id="donut-chart"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Robot Inspector -->
+      <div id="robot-inspector">
+        <div class="panel-header" style="cursor:default;">
+          <span class="panel-title">🔍 Robot Inspector</span>
+          <span style="font-family:var(--font-mono);font-size:0.75rem;" id="inspector-id">—</span>
+        </div>
+        <div class="inspector-grid">
+          <div class="insp-row">
+            <div class="insp-label">State</div>
+            <div class="insp-val" id="inspector-state">—</div>
+          </div>
+          <div class="insp-row">
+            <div class="insp-label">Carrying</div>
+            <div class="insp-val" id="inspector-carrying">—</div>
+          </div>
+          <div class="insp-row">
+            <div class="insp-label">Tasks Done</div>
+            <div class="insp-val" id="inspector-tasks">—</div>
+          </div>
+          <div class="insp-row">
+            <div class="insp-label">Collisions</div>
+            <div class="insp-val" id="inspector-collisions">—</div>
+          </div>
+          <div class="insp-row">
+            <div class="insp-label">Position</div>
+            <div class="insp-val" id="inspector-pos" style="font-size:0.75rem;">—</div>
+          </div>
+          <div class="insp-row">
+            <div class="insp-label">Target</div>
+            <div class="insp-val" id="inspector-target" style="font-size:0.72rem;">—</div>
+          </div>
+          <div class="insp-row" style="grid-column:span 2;">
+            <div class="insp-label">Battery <span id="inspector-battery">—</span></div>
+          </div>
+          <div class="insp-battery-track" style="grid-column:span 2;">
+            <div id="inspector-battery-bar" style="height:100%;border-radius:3px;width:100%;background:#00c851;transition:width 0.3s;"></div>
+          </div>
+          <div style="grid-column:span 2;">
+            <p style="font-size:0.68rem;color:var(--text-muted);margin-top:4px;">Click on any robot in the canvas to inspect it.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Export -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">💾 Export</span>
+          <span class="panel-chevron open">▾</span>
+        </div>
+        <div class="panel-body">
+          <div class="export-grid">
+            <button class="export-btn" id="btn-export-csv">
+              <span class="ei">📄</span>CSV Data
+            </button>
+            <button class="export-btn" id="btn-export-img">
+              <span class="ei">🖼</span>Snapshot
+            </button>
+            <button class="export-btn" id="btn-export-json">
+              <span class="ei">📋</span>JSON
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Legend -->
+      <div class="panel">
+        <div class="panel-header" onclick="togglePanel(this)">
+          <span class="panel-title">🗺 Legend</span>
+          <span class="panel-chevron">▾</span>
+        </div>
+        <div class="panel-body collapsed">
+          <div style="display:flex;flex-direction:column;gap:6px;font-size:0.8rem;">
+            <div class="legend-row"><div class="legend-dot" style="background:#3d1f08;border:1px solid #6b3f1f;"></div> Shelf (stores items)</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#0d3018;border:1px solid #1a5c2a;"></div> Packing Station</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#2d2200;border:1px solid #ffd700;"></div> Charger ⚡</div>
+            <div class="legend-row"><div class="legend-dot" style="background:#1e1e1e;border:1px solid #444;"></div> Obstacle</div>
+            <div class="legend-row"><div class="legend-dot" style="border-radius:50%;background:#6c63ff;"></div> Robot — Fetching</div>
+            <div class="legend-row"><div class="legend-dot" style="border-radius:50%;background:#ff4d6d;"></div> Robot — Delivering</div>
+            <div class="legend-row"><div class="legend-dot" style="border-radius:50%;background:#ff9500;"></div> Robot — Charging</div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /sidebar-scroll -->
+  </div><!-- /sidebar -->
+</div><!-- /main -->
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="js/engine.js"></script>
+<script src="js/renderer.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script>
+  // ── Sync secondary monitors ──
+  const origUpdateMonitors = window.updateMonitors;
+  window.updateMonitors = function() {
+    if (origUpdateMonitors) origUpdateMonitors();
+    const el = id => document.getElementById(id);
+    if (el('monitor-ticks2')) el('monitor-ticks2').textContent = el('monitor-ticks')?.textContent || 0;
+    if (el('monitor-fetching2')) el('monitor-fetching2').textContent = el('monitor-fetching')?.textContent || 0;
+    if (el('monitor-delivering2')) el('monitor-delivering2').textContent = el('monitor-delivering')?.textContent || 0;
+    
+    // Efficiency calculation
+    if (el('monitor-efficiency')) {
+        const total = robots.length;
+        const active = robots.filter(r => r.state === 'FETCHING' || r.state === 'DELIVERING').length;
+        const eff = total > 0 ? Math.round((active / total) * 100) : 0;
+        el('monitor-efficiency').textContent = eff + '%';
+    }
+  }
+
+  // ── Panel collapse ──
+  function togglePanel(header) {
+    const chevron = header.querySelector('.panel-chevron');
+    const body = header.nextElementSibling;
+    if (!body) return;
+    body.classList.toggle('collapsed');
+    chevron.classList.toggle('open');
+  }
+
+  // ── Chart tab switching ──
+  function switchChart(name, btn) {
+    document.querySelectorAll('.chart-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.chart-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById('chart-pane-' + name)?.classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // ── Init on load ──
+  window.addEventListener('load', () => {
+    initUI();
+    // Setup slider gradients
+    document.querySelectorAll('input[type=range]').forEach(r => {
+      const update = () => {
+        const pct = ((r.value - r.min) / (r.max - r.min)) * 100;
+        r.style.background = `linear-gradient(to right, var(--accent) ${pct}%, var(--bg-900) ${pct}%)`;
+      };
+      r.addEventListener('input', update);
+      update();
+    });
+  });
+</script>
+</body>
+</html>
