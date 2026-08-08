@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WarehouseAI — Intelligent Robot Fleet Simulation</title>
+  <meta name="description" content="Final year project: Multi-agent warehouse robot simulation with emergent behaviour analysis. Built with NetLogo and HTML5 Canvas." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
+  <!-- External CSS (also governs inline <style> below for components not in global.css) -->
+  <style>
+    :root {
+      --bg-900: #060a14;
+      --bg-800: #0d1120;
+      --bg-700: #131929;
+      --bg-600: #1a2235;
+      --border: rgba(255,255,255,0.08);
+      --border-accent: rgba(108,99,255,0.35);
+      --accent: #6c63ff;
+      --accent-light: #8a84ff;
+      --teal: #00d4aa;
+      --red: #ff4d6d;
+      --orange: #ff9500;
+      --text-primary: #e8eaf6;
+      --text-secondary: #9aa5c4;
+      --text-muted: #5a6585;
+      --shelf: #6b3f1f;
+      --packing: #1a5c2a;
+      --charger: #5c4a00;
+      --radius: 16px;
+      --shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-900);
+      color: var(--text-primary);
+      overflow-x: hidden;
+      line-height: 1.6;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-800); }
+    ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 3px; }
+
+    /* ── Header / Nav ── */
+    header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      height: 64px;
+      background: rgba(6,10,20,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 1.25rem;
+      text-decoration: none;
+      color: var(--text-primary);
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--accent), var(--teal));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+    }
+    .logo span { color: var(--accent-light); }
+
+    nav { display: flex; gap: 8px; }
+    nav a {
+      padding: 8px 18px;
+      border-radius: 8px;
+      text-decoration: none;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+    nav a:hover { color: var(--text-primary); background: var(--bg-700); }
+    nav a.cta {
+      background: linear-gradient(135deg, var(--accent), #4c44c8);
+      color: #fff;
+      box-shadow: 0 0 20px rgba(108,99,255,0.3);
+    }
+    nav a.cta:hover { transform: translateY(-1px); box-shadow: 0 0 30px rgba(108,99,255,0.5); background: var(--bg-700); }
+
+    /* ── Hero ── */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding-top: 64px;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 40%, rgba(108,99,255,0.12) 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 40% at 80% 20%, rgba(0,212,170,0.07) 0%, transparent 60%);
+    }
+
+    /* Animated grid background */
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(108,99,255,0.06) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(108,99,255,0.06) 1px, transparent 1px);
+      background-size: 48px 48px;
+      animation: gridPan 30s linear infinite;
+    }
+    @keyframes gridPan {
+      from { background-position: 0 0; }
+      to   { background-position: 48px 48px; }
+    }
+
+    /* Floating robots */
+    .robot-particle {
+      position: absolute;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      animation: floatRobot linear infinite;
+      opacity: 0.6;
+    }
+    @keyframes floatRobot {
+      from { transform: translateY(110vh) translateX(0); opacity: 0; }
+      10%  { opacity: 0.6; }
+      90%  { opacity: 0.6; }
+      to   { transform: translateY(-10vh) translateX(40px); opacity: 0; }
+    }
+
+    .hero-content {
+      position: relative;
+      z-index: 2;
+      max-width: 800px;
+      text-align: center;
+      padding: 0 24px;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      border-radius: 100px;
+      background: rgba(108,99,255,0.15);
+      border: 1px solid rgba(108,99,255,0.3);
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--accent-light);
+      margin-bottom: 28px;
+      animation: fadeInDown 0.6s ease;
+    }
+    .badge-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--teal);
+      animation: pulse 1.5s infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+
+    .hero-title {
+      font-size: clamp(2.5rem, 7vw, 5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+      animation: fadeInUp 0.7s ease 0.1s both;
+    }
+    .gradient-text {
+      background: linear-gradient(135deg, var(--accent-light), var(--teal), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 1.15rem;
+      color: var(--text-secondary);
+      max-width: 600px;
+      margin: 0 auto 40px;
+      font-weight: 400;
+      animation: fadeInUp 0.7s ease 0.2s both;
+    }
+
+    .hero-actions {
+      display: flex;
+      gap: 16px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.7s ease 0.3s both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), #4c44c8);
+      color: #fff;
+      font-weight: 700;
+      font-size: 1rem;
+      text-decoration: none;
+      box-shadow: 0 0 30px rgba(108,99,255,0.4);
+      transition: all 0.25s;
+    }
+    .btn-primary:hover { transform: translateY(-3px); box-shadow: 0 8px 40px rgba(108,99,255,0.6); }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 32px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 1rem;
+      text-decoration: none;
+      transition: all 0.25s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); border-color: rgba(108,99,255,0.5); transform: translateY(-2px); }
+
+    .hero-stats {
+      display: flex;
+      gap: 40px;
+      justify-content: center;
+      margin-top: 60px;
+      animation: fadeInUp 0.7s ease 0.4s both;
+    }
+    .hero-stat { text-align: center; }
+    .hero-stat .number { font-size: 2rem; font-weight: 800; color: var(--accent-light); }
+    .hero-stat .label  { font-size: 0.8rem; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Preview Canvas ── */
+    .preview-section {
+      position: relative;
+      padding: 0 48px 80px;
+    }
+    .preview-wrapper {
+      max-width: 1100px;
+      margin: 0 auto;
+      border-radius: 20px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      box-shadow: 0 40px 100px rgba(0,0,0,0.6);
+      background: var(--bg-800);
+      animation: fadeInUp 0.9s ease 0.5s both;
+    }
+    .preview-bar {
+      padding: 12px 20px;
+      background: var(--bg-700);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .window-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .dot-red   { background: #ff5f57; }
+    .dot-yellow{ background: #ffbc2e; }
+    .dot-green { background: #28c840; }
+    .preview-title { color: var(--text-muted); font-size: 0.8rem; margin-left: 8px; }
+    #preview-canvas { width: 100%; height: 420px; display: block; background: var(--bg-900); }
+
+    /* ── Sections ── */
+    section { padding: 100px 48px; }
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -0.02em;
+      margin-bottom: 16px;
+    }
+    .section-sub {
+      font-size: 1.05rem;
+      color: var(--text-secondary);
+      max-width: 560px;
+      margin-bottom: 64px;
+    }
+    .max-container { max-width: 1200px; margin: 0 auto; }
+
+    /* ── Feature Grid ── */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .feature-card {
+      background: var(--bg-700);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      transition: all 0.3s;
+      position: relative;
+      overflow: hidden;
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--teal));
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+    .feature-card:hover { transform: translateY(-4px); border-color: var(--border-accent); box-shadow: var(--shadow); }
+    .feature-card:hover::before { opacity: 1; }
+    .feature-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: rgba(108,99,255,0.15);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 18px;
+    }
+    .feature-title { font-weight: 700; font-size: 1.05rem; margin-bottom: 8px; }
+    .feature-desc  { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; }
+
+    /* ── Warehouse Legend ── */
+    .legend-strip {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 40px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border-radius: 8px;
+      background: var(--bg-700);
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+    }
+    .legend-dot {
+      width: 14px; height: 14px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    /* ── Team Section ── */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      margin-top: 48px;
+    }
+    .member-card {
+      background: var(--bg-700);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px 20px;
+      text-align: center;
+      transition: all 0.3s;
+    }
+    .member-card:hover { transform: translateY(-4px); border-color: var(--border-accent); }
+    .member-avatar {
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: #fff;
+    }
+    .member-name  { font-weight: 700; font-size: 0.95rem; margin-bottom: 6px; }
+    .member-role  { font-size: 0.8rem; color: var(--text-muted); }
+    .member-badge {
+      display: inline-block;
+      margin-top: 10px;
+      padding: 3px 10px;
+      border-radius: 100px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      background: rgba(108,99,255,0.15);
+      color: var(--accent-light);
+      border: 1px solid rgba(108,99,255,0.25);
+    }
+
+    /* ── Tech Stack ── */
+    .tech-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 40px;
+    }
+    .tech-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 10px;
+      background: var(--bg-700);
+      border: 1px solid var(--border);
+      font-size: 0.875rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .tech-badge:hover { border-color: var(--border-accent); transform: translateY(-2px); }
+    .tech-badge .ti { font-size: 1.2rem; }
+
+    /* ── CTA Section ── */
+    .cta-section {
+      background: linear-gradient(135deg, rgba(108,99,255,0.12), rgba(0,212,170,0.06));
+      border: 1px solid var(--border-accent);
+      border-radius: 24px;
+      padding: 80px 48px;
+      text-align: center;
+      margin: 0 48px 80px;
+    }
+    .cta-title { font-size: clamp(1.8rem, 4vw, 2.8rem); font-weight: 800; margin-bottom: 16px; }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 48px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+
+    /* ── Animations ── */
+    @keyframes fadeInUp   { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:none} }
+    @keyframes fadeInDown { from{opacity:0;transform:translateY(-20px)} to{opacity:1;transform:none} }
+
+    .fade-in { opacity: 0; transform: translateY(30px); transition: all 0.7s ease; }
+    .fade-in.visible { opacity: 1; transform: none; }
+
+    /* ── Responsive ── */
+    @media (max-width: 768px) {
+      header  { padding: 0 20px; }
+      section { padding: 64px 20px; }
+      .hero-stats { gap: 24px; }
+      nav a:not(.cta) { display: none; }
+      footer { text-align: center; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ───────────────────────────────────────────────────────────────── -->
+<header>
+  <a class="logo" href="index.html">
+    <div class="logo-icon">🤖</div>
+    Warehouse<span>AI</span>
+  </a>
+  <nav>
+    <a href="#features">Features</a>
+    <a href="#team">Team</a>
+    <a href="report.html">Report</a>
+    <a href="simulation.html" class="cta">▶ Launch Simulation</a>
+  </nav>
+</header>
+
+<!-- ── Hero ─────────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+
+  <!-- Floating robot particles -->
+  <div class="robot-particle" style="left:10%;background:#6c63ff;width:8px;height:8px;animation-duration:12s;animation-delay:0s;"></div>
+  <div class="robot-particle" style="left:25%;background:#ff4d6d;width:6px;height:6px;animation-duration:9s;animation-delay:2s;"></div>
+  <div class="robot-particle" style="left:45%;background:#00d4aa;width:10px;height:10px;animation-duration:14s;animation-delay:4s;"></div>
+  <div class="robot-particle" style="left:65%;background:#ff9500;width:7px;height:7px;animation-duration:11s;animation-delay:1s;"></div>
+  <div class="robot-particle" style="left:80%;background:#6c63ff;width:9px;height:9px;animation-duration:13s;animation-delay:3s;"></div>
+  <div class="robot-particle" style="left:90%;background:#00d4aa;width:6px;height:6px;animation-duration:10s;animation-delay:5s;"></div>
+
+  <div class="hero-content">
+    <div class="hero-badge">
+      <div class="badge-dot"></div>
+      Final Year Project — Agent Based Systems
+    </div>
+    <h1 class="hero-title">
+      Intelligent<br/>
+      <span class="gradient-text">Warehouse Robot</span><br/>
+      Fleet Simulation
+    </h1>
+    <p class="hero-subtitle">
+      A multi-agent system where autonomous robots exhibit emergent queuing,
+      battery synchronisation, and congestion patterns — all from simple local rules.
+    </p>
+    <div class="hero-actions">
+      <a href="simulation.html" class="btn-primary">🚀 Open Simulation</a>
+      <a href="report.html" class="btn-secondary">📊 View Report</a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="number">50+</div>
+        <div class="label">Robot Agents</div>
+      </div>
+      <div class="hero-stat">
+        <div class="number">3</div>
+        <div class="label">Test Scenarios</div>
+      </div>
+      <div class="hero-stat">
+        <div class="number">Real-time</div>
+        <div class="label">Analytics</div>
+      </div>
+      <div class="hero-stat">
+        <div class="number">NetLogo</div>
+        <div class="label">Engine Ported</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Preview Canvas ────────────────────────────────────────────────────────── -->
+<div class="preview-section">
+  <div class="preview-wrapper">
+    <div class="preview-bar">
+      <div class="window-dot dot-red"></div>
+      <div class="window-dot dot-yellow"></div>
+      <div class="window-dot dot-green"></div>
+      <span class="preview-title">WarehouseAI — Live Simulation Preview (10 robots, auto-run)</span>
+    </div>
+    <canvas id="preview-canvas"></canvas>
+  </div>
+</div>
+
+<!-- ── Features ─────────────────────────────────────────────────────────────── -->
+<section id="features">
+  <div class="max-container">
+    <div class="section-label">Capabilities</div>
+    <h2 class="section-title">Everything you need to<br/><span class="gradient-text">analyse the system</span></h2>
+    <p class="section-sub">From real-time Canvas rendering to CSV exports and scenario comparisons — the full toolkit for your report.</p>
+
+    <div class="features-grid fade-in">
+      <div class="feature-card">
+        <div class="feature-icon">🏭</div>
+        <div class="feature-title">Live Warehouse Canvas</div>
+        <div class="feature-desc">40×28 cell grid with shelves, packing stations, chargers, and obstacles rendered in real-time at 30 fps.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🤖</div>
+        <div class="feature-title">Multi-Agent Robots</div>
+        <div class="feature-desc">Up to 50 autonomous robots with priority-based decision logic: battery → deliver → fetch.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔋</div>
+        <div class="feature-title">Battery Management</div>
+        <div class="feature-desc">Each robot independently manages its battery. Emergent charging queues form with large fleets.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🚦</div>
+        <div class="feature-title">Collision Avoidance</div>
+        <div class="feature-desc">Cone-of-vision detection (1.5 radius, 60° half-angle) with randomised avoidance turn — mirrors NetLogo in-cone.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔥</div>
+        <div class="feature-title">Congestion Heatmap</div>
+        <div class="feature-desc">Toggle a live heat overlay showing which aisles are bottlenecks. Heat decays at 5% per tick.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📈</div>
+        <div class="feature-title">Real-time Charts</div>
+        <div class="feature-desc">Throughput, battery levels, robot states, and collision counts plotted live with Chart.js.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🎬</div>
+        <div class="feature-title">Speed Control</div>
+        <div class="feature-desc">Run at 0.5×, 1×, 2×, 5×, or 10× speed. Step through one tick at a time for debugging.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔍</div>
+        <div class="feature-title">Robot Inspector</div>
+        <div class="feature-desc">Click any robot to inspect its state, battery, task count, collision history, and current target.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📦</div>
+        <div class="feature-title">Scenario Presets</div>
+        <div class="feature-desc">One-click Scenario 1/2/3 buttons pre-configure exactly the settings from your assessment brief.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">💾</div>
+        <div class="feature-title">Data Export</div>
+        <div class="feature-desc">Export simulation data as CSV, PNG snapshot of the canvas, or full JSON session for your report.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📊</div>
+        <div class="feature-title">Scenario Comparison</div>
+        <div class="feature-desc">Auto-run all three scenarios and generate a side-by-side comparison table on the Report page.</div>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">⌨️</div>
+        <div class="feature-title">Keyboard Shortcuts</div>
+        <div class="feature-desc">Space = play/pause, R = reset, S = step, H = heatmap, T = trails, 1/2/3 = scenarios.</div>
+      </div>
+    </div>
+
+    <!-- Warehouse Legend -->
+    <div class="legend-strip" style="margin-top:48px;">
+      <div class="legend-item"><div class="legend-dot" style="background:#3d1f08;border:1px solid #6b3f1f;"></div> Shelf (items)</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#0d3018;border:1px solid #1a5c2a;"></div> Packing Station</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#2d2200;border:1px solid #ffd700;"></div> Charging Station ⚡</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#1e1e1e;border:1px solid #444;"></div> Obstacle</div>
+      <div class="legend-item"><div class="legend-dot" style="border-radius:50%;background:#6c63ff;"></div> Robot — Fetching</div>
+      <div class="legend-item"><div class="legend-dot" style="border-radius:50%;background:#ff4d6d;"></div> Robot — Delivering</div>
+      <div class="legend-item"><div class="legend-dot" style="border-radius:50%;background:#ff9500;"></div> Robot — Charging</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Team ──────────────────────────────────────────────────────────────────── -->
+<section id="team" style="background:rgba(255,255,255,0.015);border-top:1px solid var(--border);border-bottom:1px solid var(--border);">
+  <div class="max-container">
+    <div class="section-label">Group W</div>
+    <h2 class="section-title">Meet the <span class="gradient-text">team</span></h2>
+    <p class="section-sub">Five final year students collaborating on an agent-based systems simulation for the course assessment.</p>
+
+    <div class="team-grid fade-in">
+      <div class="member-card">
+        <div class="member-avatar" style="background:linear-gradient(135deg,#6c63ff,#4c44c8);">DS</div>
+        <div class="member-name">Deshan V</div>
+        <div class="member-role">Lead Developer</div>
+        <div class="member-badge">Simulation Engine</div>
+      </div>
+      <div class="member-card">
+        <div class="member-avatar" style="background:linear-gradient(135deg,#00d4aa,#0099cc);">M2</div>
+        <div class="member-name">Member 2</div>
+        <div class="member-role">UI Developer</div>
+        <div class="member-badge">renderer.js</div>
+      </div>
+      <div class="member-card">
+        <div class="member-avatar" style="background:linear-gradient(135deg,#ff4d6d,#cc2244);">M3</div>
+        <div class="member-name">Member 3</div>
+        <div class="member-role">Data & Charts</div>
+        <div class="member-badge">charts.js</div>
+      </div>
+      <div class="member-card">
+        <div class="member-avatar" style="background:linear-gradient(135deg,#ff9500,#cc6600);">M4</div>
+        <div class="member-name">Member 4</div>
+        <div class="member-role">Scenario Analysis</div>
+        <div class="member-badge">report.html</div>
+      </div>
+      <div class="member-card">
+        <div class="member-avatar" style="background:linear-gradient(135deg,#a855f7,#6c63ff);">M5</div>
+        <div class="member-name">Member 5</div>
+        <div class="member-role">NetLogo / Docs</div>
+        <div class="member-badge">ui.js</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Tech Stack ─────────────────────────────────────────────────────────────── -->
+<section>
+  <div class="max-container">
+    <div class="section-label">Stack</div>
+    <h2 class="section-title">Built with</h2>
+    <div class="tech-grid fade-in">
+      <div class="tech-badge"><span class="ti">🟩</span> NetLogo 6.x</div>
+      <div class="tech-badge"><span class="ti">🌐</span> HTML5 Canvas API</div>
+      <div class="tech-badge"><span class="ti">🎨</span> Vanilla CSS3</div>
+      <div class="tech-badge"><span class="ti">⚡</span> Vanilla JavaScript</div>
+      <div class="tech-badge"><span class="ti">📊</span> Chart.js 4</div>
+      <div class="tech-badge"><span class="ti">🔤</span> Inter (Google Fonts)</div>
+      <div class="tech-badge"><span class="ti">🔁</span> requestAnimationFrame</div>
+      <div class="tech-badge"><span class="ti">📁</span> Git / GitHub</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ───────────────────────────────────────────────────────────────────── -->
+<div class="cta-section fade-in">
+  <div class="section-label">Ready?</div>
+  <h2 class="cta-title">Start the <span class="gradient-text">simulation</span></h2>
+  <p style="color:var(--text-secondary);margin:0 auto 36px;max-width:500px;">Load a scenario, press Go, and watch emergent behaviour unfold in real-time.</p>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+    <a href="simulation.html" class="btn-primary">🚀 Open Simulation</a>
+    <a href="report.html"     class="btn-secondary">📊 View Report</a>
+  </div>
+</div>
+
+<!-- ── Footer ────────────────────────────────────────────────────────────────── -->
+<footer>
+  <div>© 2025 Group W — Agent Based Systems Final Year Project</div>
+  <div style="display:flex;gap:20px;">
+    <a href="simulation.html" style="color:var(--text-muted);text-decoration:none;">Simulation</a>
+    <a href="report.html"     style="color:var(--text-muted);text-decoration:none;">Report</a>
+    <a href="index.html"      style="color:var(--text-muted);text-decoration:none;">Home</a>
+  </div>
+</footer>
+
+<!-- ── Scripts ───────────────────────────────────────────────────────────────── -->
+<script src="js/engine.js"></script>
+<script src="js/renderer.js"></script>
+<script>
+  /* ── Hero preview mini-simulation ── */
+  window.addEventListener('load', () => {
+    const cvs = document.getElementById('preview-canvas');
+    cvs.width  = cvs.offsetWidth;
+    cvs.height = cvs.offsetHeight;
+    initRenderer(cvs);
+    params.numRobots = 12;
+    params.numObstacles = 8;
+    params.robotSpeed = 1.5;
+    params.batteryCapacity = 100;
+    params.lowBatteryThreshold = 20;
+    params.restockRate = 20;
+    setup();
+    const loop = () => { tick(); render(); requestAnimationFrame(loop); };
+    requestAnimationFrame(loop);
+  });
+
+  /* ── Scroll fade-in ── */
+  const io = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); });
+  }, { threshold: 0.15 });
+  document.querySelectorAll('.fade-in').forEach(el => io.observe(el));
+</script>
+</body>
+</html>
