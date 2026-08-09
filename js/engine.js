@@ -185,8 +185,11 @@ function setup() {
 
 // ─── Robot Decision (Priority-based) ──────────────────────────────────────────
 function robotDecide(robot) {
-  // PRIORITY 1 — Battery critically low → go charge
-  if (robot.batteryLevel < params.lowBatteryThreshold) {
+  // PRIORITY 1 — Battery critically low OR currently charging until full → go charge
+  if (
+    robot.batteryLevel < params.lowBatteryThreshold ||
+    (robot.state === 'charge' && robot.batteryLevel < params.batteryCapacity)
+  ) {
     const chargers = getAllOfType('charger');
     robot.target = nearestOf(chargers, robot.x, robot.y);
     robot.state = 'charge';
@@ -260,8 +263,9 @@ function robotMove(robot) {
     totalCollisionsAvoided++;
     robot.stuckTimer++;
   } else {
-    // Clear path — move forward at robot-speed
-    const speed = params.robotSpeed * 0.12;
+    // Clear path — move forward at robot-speed (emergency slow crawl at 0 battery)
+    const speedMult = robot.batteryLevel <= 0 ? 0.2 : 1.0;
+    const speed = params.robotSpeed * 0.12 * speedMult;
     const newX = robot.x + Math.cos(robot.angle) * speed;
     const newY = robot.y + Math.sin(robot.angle) * speed;
     const newCell = getCell(Math.floor(newX), Math.floor(newY));
@@ -285,7 +289,7 @@ function robotMove(robot) {
   }
 
   // Battery drain every movement tick
-  robot.batteryLevel = Math.max(0, robot.batteryLevel - 1);
+  robot.batteryLevel = Math.max(0, robot.batteryLevel - 0.1);
 
   // Trail recording
   robot.trail.push({ x: robot.x, y: robot.y });
@@ -367,6 +371,8 @@ function getMetrics() {
   const charging = robots.filter(r => r.state === 'charge').length;
   const delivering = robots.filter(r => r.state === 'deliver').length;
   const fetching = robots.filter(r => r.state === 'fetch').length;
+  const active = fetching + delivering;
+  const eff = robots.length > 0 ? Math.round((active / robots.length) * 100) : 0;
   return {
     totalItemsDelivered,
     totalCollisionsAvoided,
@@ -375,7 +381,7 @@ function getMetrics() {
     robotsFetching: fetching,
     robotsDelivering: delivering,
     ticks,
-    efficiency: ticks > 0 ? ((totalItemsDelivered / (ticks * robots.length || 1)) * 100).toFixed(2) : '0.00',
+    efficiency: eff,
     throughputPerMin: ticks > 0 ? Math.round(totalItemsDelivered / (ticks / 60)) : 0,
   };
 }

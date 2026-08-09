@@ -95,11 +95,10 @@ function onCanvasHover(e) {
 
 function getGridCoords(e) {
   const r = canvas.getBoundingClientRect();
-  const sx = canvas.width / r.width;
-  const sy = canvas.height / r.height;
+  if (!r.width || !r.height) return { gx: 0, gy: 0 };
   return {
-    gx: ((e.clientX - r.left) * sx) / cellW,
-    gy: ((e.clientY - r.top) * sy) / cellH,
+    gx: ((e.clientX - r.left) / r.width) * GRID_COLS,
+    gy: ((e.clientY - r.top) / r.height) * GRID_ROWS,
   };
 }
 
