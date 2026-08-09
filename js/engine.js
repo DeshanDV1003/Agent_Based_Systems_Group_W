@@ -371,6 +371,8 @@ function getMetrics() {
   const charging = robots.filter(r => r.state === 'charge').length;
   const delivering = robots.filter(r => r.state === 'deliver').length;
   const fetching = robots.filter(r => r.state === 'fetch').length;
+  const active = fetching + delivering;
+  const eff = robots.length > 0 ? Math.round((active / robots.length) * 100) : 0;
   return {
     totalItemsDelivered,
     totalCollisionsAvoided,
@@ -379,7 +381,7 @@ function getMetrics() {
     robotsFetching: fetching,
     robotsDelivering: delivering,
     ticks,
-    efficiency: ticks > 0 ? ((totalItemsDelivered / (ticks * robots.length || 1)) * 100).toFixed(2) : '0.00',
+    efficiency: eff,
     throughputPerMin: ticks > 0 ? Math.round(totalItemsDelivered / (ticks / 60)) : 0,
   };
 }
