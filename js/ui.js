@@ -46,9 +46,19 @@ function initCanvas() {
 
 function resizeCanvasToContainer(cvs) {
   const container = cvs.parentElement;
-  cvs.width  = container.clientWidth  || 800;
-  cvs.height = container.clientHeight || 560;
-  computeCellSize();
+  if (!container) return;
+  const dpr = window.devicePixelRatio || 1;
+  const w = container.clientWidth || 800;
+  const h = container.clientHeight || 560;
+
+  cvs.width  = Math.floor(w * dpr);
+  cvs.height = Math.floor(h * dpr);
+  cvs.style.width  = w + 'px';
+  cvs.style.height = h + 'px';
+
+  if (typeof computeCellSize === 'function') {
+    computeCellSize();
+  }
 }
 
 // ─── Slider Binding ───────────────────────────────────────────────────────────
@@ -259,19 +269,28 @@ function startRenderLoop() {
 // ─── Monitor Updates ──────────────────────────────────────────────────────────
 function updateMonitors() {
   const m = getMetrics();
-  setText('monitor-delivered',  m.totalItemsDelivered);
-  setText('monitor-battery',    m.avgBattery + '%');
-  setText('monitor-collisions', m.totalCollisionsAvoided);
-  setText('monitor-charging',   m.robotsCharging);
-  setText('monitor-ticks',      m.ticks);
-  setText('monitor-efficiency', m.efficiency + '%');
-  setText('monitor-fetching',   m.robotsFetching);
-  setText('monitor-delivering', m.robotsDelivering);
+
+  const setVal = (selectors, val) => {
+    selectors.split(',').forEach(sel => {
+      document.querySelectorAll(sel.trim()).forEach(el => {
+        el.textContent = val;
+      });
+    });
+  };
+
+  setVal('#monitor-delivered, #monitor-delivered-pill, .monitor-delivered-val', m.totalItemsDelivered);
+  setVal('#monitor-battery, .monitor-battery-val', m.avgBattery + '%');
+  setVal('#monitor-collisions, .monitor-collisions-val', m.totalCollisionsAvoided);
+  setVal('#monitor-charging, #monitor-charging-pill, .monitor-charging-val', m.robotsCharging);
+  setVal('#monitor-ticks, #topbar-ticks, #monitor-ticks2, .monitor-ticks-val', m.ticks);
+  setVal('#monitor-efficiency, .monitor-efficiency-val', m.efficiency + '%');
+  setVal('#monitor-fetching, #monitor-fetching-pill, #monitor-fetching2, .monitor-fetching-val', m.robotsFetching);
+  setVal('#monitor-delivering, #monitor-delivering-pill, #monitor-delivering2, .monitor-delivering-val', m.robotsDelivering);
 
   // Battery mini-progress bar
   const barEl = document.getElementById('avg-battery-bar');
   if (barEl && params.batteryCapacity) {
-    const pct = (m.avgBattery / params.batteryCapacity) * 100;
+    const pct = Math.min(100, Math.max(0, (m.avgBattery / params.batteryCapacity) * 100));
     barEl.style.width = pct + '%';
     barEl.style.backgroundColor = pct > 50 ? '#00c851' : pct > 20 ? '#ff9500' : '#ff4d6d';
   }

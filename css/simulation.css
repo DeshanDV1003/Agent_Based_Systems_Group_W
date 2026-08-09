@@ -112,6 +112,8 @@ body {
   display: grid;
   grid-template-columns: 1fr 360px;
   flex: 1;
+  min-height: 0;
+  height: calc(100vh - 52px);
   overflow: hidden;
 }
 
@@ -241,20 +243,31 @@ body {
 .sidebar {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   overflow: hidden;
   background: var(--bg-800);
 }
 .sidebar-scroll {
   flex: 1;
+  min-height: 0;
+  max-height: 100%;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: var(--accent) var(--bg-800);
 }
 
 /* ── Collapsible Panel ── */
-.panel {
+.panel,
+#robot-inspector {
+  flex-shrink: 0;
   background: var(--bg-700);
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -302,9 +315,15 @@ body {
   background: var(--bg-600);
   border: 1px solid var(--border);
   border-radius: 10px;
-  padding: 12px;
+  padding: 12px 8px;
   text-align: center;
   transition: var(--transition);
+  min-height: 70px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
 }
 .monitor-card:hover { border-color: var(--border-accent); }
 
@@ -491,18 +510,26 @@ body {
 /* ════════════════════════════════
    RESPONSIVE
    ════════════════════════════════ */
+@media (max-width: 1200px) {
+  .main { grid-template-columns: 1fr 320px; }
+}
+
 @media (max-width: 900px) {
   html, body { height: auto; overflow: auto; }
-  .main { grid-template-columns: 1fr; grid-template-rows: 60vh 1fr; }
-  .canvas-pane { border-right: none; border-bottom: 1px solid var(--border); }
-  .sidebar { overflow-y: auto; }
-  .canvas-toolbar { overflow-x: auto; flex-wrap: nowrap; }
+  .main { display: flex; flex-direction: column; height: auto; }
+  .canvas-pane { height: 55vh; min-height: 380px; border-right: none; border-bottom: 1px solid var(--border); }
+  .sidebar { overflow-y: visible; }
+  .canvas-toolbar { overflow-x: auto; flex-wrap: nowrap; padding: 6px 10px; }
   .kb-hint { display: none; }
 }
 
 @media (max-width: 600px) {
-  .topbar { padding: 0 10px; }
+  .topbar { padding: 0 10px; height: 48px; }
+  .topbar-logo { font-size: 0.9rem; }
   .topbar-nav { display: none; }
-  .monitors-grid { grid-template-columns: 1fr 1fr; }
-  .stats-row { grid-template-columns: repeat(2, 1fr); }
+  .monitors-grid { grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stats-row { grid-template-columns: repeat(2, 1fr); gap: 6px; }
+  .ctrl-btn { padding: 6px 10px; font-size: 0.75rem; }
+  .canvas-overlay { bottom: 8px; left: 8px; gap: 4px; }
+  .overlay-pill { padding: 3px 8px; font-size: 0.65rem; }
 }

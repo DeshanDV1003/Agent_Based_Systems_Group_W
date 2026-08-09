@@ -101,7 +101,7 @@ to go
 end
 
 to robot-decide
-  if battery-level < low-battery-threshold [
+  if battery-level < low-battery-threshold or (robot-state = "charge" and battery-level < battery-capacity) [
     let nc min-one-of (patches with [ patch-type = "charger" ]) [ distance myself ]
     set target-patch nc
     set robot-state "charge"
@@ -144,7 +144,8 @@ to robot-move
     set total-collisions-avoided total-collisions-avoided + 1
     set stuck-timer stuck-timer + 1
   ] [
-    forward robot-speed * 0.3
+    let speed-mult ifelse-value (battery-level <= 0) [ 0.2 ] [ 1.0 ]
+    forward robot-speed * 0.3 * speed-mult
     set stuck-timer max (list 0 (stuck-timer - 1))
   ]
   if stuck-timer > 60 [
@@ -154,7 +155,7 @@ to robot-move
     if dest != nobody [ move-to dest ]
     set stuck-timer 0
   ]
-  set battery-level max (list 0 (battery-level - 1))
+  set battery-level max (list 0 (battery-level - 0.1))
   ask patch-here [ set congestion-heat min (list 200 (congestion-heat + 1)) ]
 end
 
