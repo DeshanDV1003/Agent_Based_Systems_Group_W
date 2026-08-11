@@ -69,10 +69,10 @@
 
       <!-- State overlay pills -->
       <div class="canvas-overlay">
-        <div class="overlay-pill purple">🔵 Fetch: <span id="monitor-fetching">0</span></div>
-        <div class="overlay-pill red">🔴 Deliver: <span id="monitor-delivering">0</span></div>
-        <div class="overlay-pill orange">🟠 Charge: <span id="monitor-charging">0</span></div>
-        <div class="overlay-pill teal">✅ Items: <span id="monitor-delivered">0</span></div>
+        <div class="overlay-pill purple">🔵 Fetch: <span id="monitor-fetching-pill">0</span></div>
+        <div class="overlay-pill red">🔴 Deliver: <span id="monitor-delivering-pill">0</span></div>
+        <div class="overlay-pill orange">🟠 Charge: <span id="monitor-charging-pill">0</span></div>
+        <div class="overlay-pill teal">✅ Items: <span id="monitor-delivered-pill">0</span></div>
       </div>
 
       <!-- Keyboard hints -->
@@ -336,24 +336,6 @@
 <script src="js/charts.js"></script>
 <script src="js/ui.js"></script>
 <script>
-  // ── Sync secondary monitors ──
-  const origUpdateMonitors = window.updateMonitors;
-  window.updateMonitors = function() {
-    if (origUpdateMonitors) origUpdateMonitors();
-    const el = id => document.getElementById(id);
-    if (el('monitor-ticks2')) el('monitor-ticks2').textContent = el('monitor-ticks')?.textContent || 0;
-    if (el('monitor-fetching2')) el('monitor-fetching2').textContent = el('monitor-fetching')?.textContent || 0;
-    if (el('monitor-delivering2')) el('monitor-delivering2').textContent = el('monitor-delivering')?.textContent || 0;
-    
-    // Efficiency calculation
-    if (el('monitor-efficiency')) {
-        const total = robots.length;
-        const active = robots.filter(r => r.state === 'FETCHING' || r.state === 'DELIVERING').length;
-        const eff = total > 0 ? Math.round((active / total) * 100) : 0;
-        el('monitor-efficiency').textContent = eff + '%';
-    }
-  }
-
   // ── Panel collapse ──
   function togglePanel(header) {
     const chevron = header.querySelector('.panel-chevron');
